@@ -4,9 +4,9 @@ From this repository, we will share all materials (slides, datasets, exercises, 
 
 Locations:
 
-* Monday June 16 2025: TBA
-* Wednesday June 18 2025: TBA
-* Friday June 20 2025: TBA
+* Monday June 16 2025: 1A24
+* Wednesday June 18 2025: 5A23
+* Friday June 20 2025: 5A29
 
 Times:
 
