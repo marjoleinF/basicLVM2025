@@ -12,7 +12,7 @@ From this repository, we will share all materials (slides, datasets, exercises, 
 * Morning sessions: 10:00 – 13:00
 * Afternoon sessions: 14:00 – 17:30
 
-**Topics and instructor**
+**Topics and instructors**
 
 Monday:
 
