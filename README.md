@@ -2,37 +2,26 @@
 
 From this repository, we will share all materials (slides, datasets, exercises, answers to exercises) for the course. A separate folder will be created for each of the morning and afternoon sessions.
 
-Locations:
+**Locations**
 
 * Monday June 16 2025: 1A24
 * Wednesday June 18 2025: 5A23
-* Friday June 20 2025: 5A29
 
-Times:
+**Times**
 
 * Morning sessions: 10:00 – 13:00
-* Afternoon sessions: 14:00 – 17:00
+* Afternoon sessions: 14:00 – 17:30
 
-Topics and instructor:
+**Topics and instructor**
 
 Monday:
 
-* Morning: Introduction, instructor: Marjolein Fokkema
+* Morning: Introduction, path models. Instructor: Marjolein Fokkema
 
-* Afternoon: Basic Confirmatory Factor Analyses, instructor: Mathilde Verdam
+* Afternoon: Basic Confirmatory Factor Analyses. Instructor: Mathilde Verdam
 
 Wednesday:
 
-* Morning: Latent growth curves (incl. panel models), instructor: Mathilde Verdam
+* Morning: Latent growth curves (incl. panel models). Instructor: Mathilde Verdam
 
-* Afternoon: Ordered-categorical indicators, instructor: Marjolein Fokkema
-
-Friday:
-
-* Morning: Multigroup Models, instructor: Mathilde Verdam
-
-* Afternoon: Miscellaneous (send your topic and model requests!), instructor: Marjolein Fokkema
-
-
-
-
+* Afternoon: Ordered-categorical indicators, missing data. Instructor: Marjolein Fokkema
