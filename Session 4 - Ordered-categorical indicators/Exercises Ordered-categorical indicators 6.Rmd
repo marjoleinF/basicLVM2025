@@ -1,0 +1,116 @@
+---
+output: pdf_document
+title: Exercises Ordered Categorical Indicators 
+---
+
+# Exercise 6.1
+
+Bartholomew, Steele, Galbraith, and Moustaki (2008) analyzed four items from the British Social Attitudes Survey concerning abortion. The item responses from 379 respondents are available in the Abortion data from the **`ltm`** package. The items wording is as follows:
+
+1. The woman decides on her own that she does not wish to have a child.
+2. The couple agree that they do not wish to have a child.
+3. The woman is not married and does not wish to marry the man.
+4. The couple cannot afford any more children.
+
+For each item, respondents were to indicate yes (1) or no (0) on whether abortion should be allowed in that situation.
+
+```{r, results = FALSE, message = FALSE, warning = FALSE}
+library("ltm")
+summary(Abortion)
+```
+
+We first rename the variables, so their names do not contain spaces (this would be problematic for specifying the model in lavaan syntax):
+
+```{r}
+names(Abortion) <- c(paste0("I", 1:4))
+```
+
+a) Find the proportion of respondents who endorsed each item (i.e., the mean score). Which items are the most (least) difficult (i.e., for which items do you need the higher (lower) levels of the latent trait in order to endorse the item?)
+
+b) Fit a CFA for binary responses using the `cfa()` function, assuming a single factor underlies all item responses. Think of an appropriate name for the common factor. Hint: use `ordered = paste0("I", 1:4)` to declare the items as ordered categorical in the call to function `cfa()`.
+
+c) Assess model fit by checking parameter estimates and the values of the fit indices.
+
+Inspect the estimated thresholds and loadings to answer the following questions: 
+
+d) If you would have to create a 1-item abortion attitude test, which item would you select?
+
+e) If the 1-item test has to be used to find persons with extremely liberal views on abortion, which item would you select?
+
+
+
+
+# Exercise 6.2
+
+Beaujean and Sheng (2010) conducted an IRT analysis of the ten-item vocabulary test from the General Social Survey. Data from the respondents with responses to all 10 items (n = 2943) from the 2000 decade group are available as a space delimited file (gss2000.dat), and the items are named word.a-word.j. Get the file "gss2000.dat" from the GitHub repository. To load it in **`R`**, type:
+
+```{r}
+gssdat <- read.table("gss2000.dat", header = TRUE)
+summary(gssdat)
+```
+
+a) Conduct a CFA on these items, assuming one underlying latent factor. Hint: Add the following in the call to the `cfa()` function: `ordered = paste0("word.", letters[1:10])`
+
+b) What are the easiest and most difficult items?
+
+c) What are the best and worst indicators of the latent trait?
+
+d) Fit an IRT model on the same data using function `ltm()`. Check if the same items are most easy or most difficult, and whether the same items are the best and worst indicators of the latent trait.
+
+e) Does the Rasch, or the 2pl model fit the 10 vocabulary items better? Evaluate using DWLS estimation (function `cfa()`), as well as using ML estimation (functions `ltm()` and `rasch()`).
+
+
+
+# Additional exercise: HADS
+
+Get the "HADS.sav" file from github and load it in **`R`** by typing: 
+
+```{r, warning = FALSE, message=FALSE}
+library("foreign")
+HADS <- read.spss("HADS.sav", to.data.frame = TRUE)
+head(HADS)
+```
+
+The file contains item responses of 502 respondents and the anxiety items of the Hospital Anxiety and Depression Scale (HADS).
+   
+The wording of these items is as follows:
+
+1. I feel tense or wound up
+2. I get a sort of frightened feeling as if something awful is about to happen
+3. Worrying thoughts go through my mind
+4. I can sit at ease and feel relaxed
+5. I get a sort of frightened feeling like 'butterflies' in the stomach
+6. I feel restless as I have to be on the move
+7. I get sudden feelings of panic
+
+a) Using the `cfa()` function, fit the graded response model (GRM) to these items responses. Specify a two-dimensional model:
+
+```{r}
+HADS.mod <- '
+  PAG =~ HADS1 + HADS4 + HADS6
+  ANX =~ HADS2 + HADS3 + HADS5 + HADS7
+'
+```
+
+b) Which category from which item is the 'easiest'?
+
+c) What do we mean by 'easiest' in this case?
+
+d) Are all category thresholds ordered similarly across items?
+
+e) Using the `cfa()` function, fit a partial credit model (PCM) to the item responses.
+
+f) Compare the parameter estimates and fit of the GRM and PCM and decide which model you prefer.
+
+g) Let's treat the HADS items as continuous indicators now. We first convert the items responses to class `numeric`:
+
+```{r, warning = FALSE, eval=FALSE}
+HADS2 <- sapply(HADS[ , 4:10], as.numeric)
+head(HADS2)
+```
+
+Fit a CFA model to the items using ML estimation (i.e., apply the `cfa()` function but do NOT declare the items as ordered).
+
+Evaluate model fit by looking at fit measures and parameter estimates.
+
+h) Now fit a CFA model using robust ML estimation. You can do this by adding `estimator = "MLR"` to the call to function `cfa()`. Compare the parameter estimates between the ML and robust ML model. Compare the fit measures between the ML and robust ML model.

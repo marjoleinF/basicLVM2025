@@ -1,0 +1,137 @@
+---
+output: pdf_document
+title: Example 6.2 - Ordered-categorical indicator variables
+---
+
+We are going to look at a dataset containing responses to five items of the LSAT Figure Classification test:
+
+```{r}
+library("psych")
+head(lsat6)
+```
+
+# Part I: CFA approach (least-squares estimation)
+
+First, let's look at the tetrachoric correlations:
+
+```{r}
+tet <- tetrachoric(lsat6)
+tet
+round(cor(lsat6), digits = 3)
+```
+
+We see that the tetrachoric correlations, which account for the binary nature of the items, are higher than the Pearson correlations (calculated with `cor()`). This is what we generally see: for binary items, the Pearson correlation underestimates the strength of associations.    
+
+The tetrachoric correlation matrix also provides us with item thresholds. Lower values indicate easier items.
+  
+We can also inspect the item means (i.e., proportion of respondents who had the items correct):
+
+```{r}
+sort(colMeans(lsat6), decreasing = TRUE)
+sort(tet$tau)
+```
+
+Both thresholds and item means indicate the same ordering of items in terms of difficulty. The most difficult item is Q3, the easiest item is Q1.
+
+Let's perform a CFA using lavaan:
+
+```{r, message=FALSE, warning=FALSE}
+library("lavaan")
+model.CFA <- '
+  Theta =~ Q1 + Q2 + Q3 + Q4 + Q5
+'
+fit.CFA <- cfa(model.CFA, data = data.frame(lsat6), ordered = paste0("Q", 1:5))
+paste0("Q", 1:5)
+summary(fit.CFA, standardized = TRUE, fit.measures = TRUE)
+```
+
+We see that because we declared the items as ordered-categorical, the DWLS (diagonally weighted least squares) estimator was used. This provides standard and robust (robust against deviations from normality) fit indices, by default.
+
+The model fits very well according to all fit measures. All loadings are substantial and significant. The most difficult item is Q3, easiest item is Q1. Also, Q3 is the strongest indicator of the latent trait, Q5 the weakest indicator.
+
+
+# Part II: IRT approach (maximum likelihood estimation)
+
+Using R package **`ltm`**, we can perform a similar analysis, but not using ML estimation.
+
+```{r, message=FALSE, warning=FALSE}
+library("ltm")
+lsat.IRT <- ltm(lsat6 ~ z1)
+summary(lsat.IRT)
+```
+
+The difficulty parameters reveal a similar ordering of item difficulty as the thresholds we estimated earlier. The discrimination parameters reveal a similar (but not completely identical) ordering of indicator strength as the loadings we estimated earlier.
+
+
+# Part III: Comparing the fit of the Rasch (1PL) and 2PL model
+
+In the Rasch model, the probability of a correct answer is a function of the subject's ability and the item's difficulty:
+
+$$ p(Y = 1 | \theta_j, \beta_i) = \frac{e^{\theta_j - \beta_i}}{1 + e^{\theta_j - \beta_i}} $$
+  
+where $\theta_j$ is the ability of person $j$, and $\beta_i$ is the difficulty of item $i$.
+  
+In the 2PL model, the probability of a correct answer is additionaly determined by the item's discriminatory power:
+
+$$ p(Y = 1 | \theta_j, \beta_i, \alpha_i) = \frac{e^{\alpha_i(\theta_j - \beta_i)}}{1 + e^{\alpha_i(\theta_j - \beta_i)}} $$
+  
+where $\alpha_i$ is the discrimination parameter of item $i$.  
+  
+We can empirically decide between the Rasch and 2PL model, by fitting both models to the data, and testing the difference in model fit.
+
+We can do that using DWLS estimation in **`lavaan`**:
+
+```{r}
+model.rasch <- '
+  Theta =~ lambda*Q1 + lambda*Q2 + lambda*Q3 + lambda*Q4 + lambda*Q5
+'
+```
+
+Note that I pre-multiplied all items with `lambda`. As a result, every item's loading will receive the same label, and all loadings will have the same estimated value. In effect, this applies an equality restriction on the item loadings.
+
+We fit the model to the data and inspect the results:
+
+```{r}
+fit.rasch <- cfa(model.rasch, data = data.frame(lsat6), ordered = paste0("Q", 1:5))
+summary(fit.rasch, standardized = TRUE, fit.measures = TRUE)
+```
+
+We see good model fit according to all indices. Note that we have more degrees of freedom, because we estimated less parameters than in the previous model (Rasch model estimates 1 loading, the earlier model estimated 5 separate loadings for the items). We see that the standardized loadings are substantial and significant. The latent variable (`theta`) has signficant variance. The ordering of item difficulties remained the same.
+
+So should we prefer the more parsimoneous Rasch model, or the more complex 2PL model? Although this is in large part a matter of personal preference (parsimonity vs. complexity), we can also decide on statistical grounds, by comparing the fit indices:
+
+```{r}
+fitinds <- c("chisq.scaled", "df", "pvalue.scaled", "cfi.scaled", 
+             "rmsea.scaled", "srmr")
+fitMeasures(fit.CFA, fitinds)
+fitMeasures(fit.rasch, fitinds)
+```
+
+Both models show excellent fit. Although $\chi^2$ and SRMR indicate closer fit to the data for the 2PL model, the $df$ indicate that the 1PL model is more parsimonious.
+
+We can also statistically test the difference in model fit using a likelihood-ratio test:
+
+```{r}
+lavTestLRT(fit.rasch, fit.CFA)
+```
+
+The likeihood ratio test indicates no significant difference in model fit between the 1- and 2PL model. In that case, we prefer the more parsimonious Rasch (1PL) model. 
+
+We could do the same comparison for the ML-estimated models:
+
+```{r}
+lsat.IRT.rasch <- rasch(lsat6)
+summary(lsat.IRT.rasch)
+anova(lsat.IRT.rasch, lsat.IRT)
+```
+
+Note that here we can compare models using information criteria (AIC, BIC). These information criteria are only defined for ML estimation, not for (DW)LS estimation (where we can still test difference using the the likelihood ratio test, or CFI, RMSEA, etc.). According to AIC and BIC, we should prefer the Rasch model. Furthermore, the likelihood ratio test does not indicate a difference in fit between the 1PL and 2PL model.
+
+
+# Part IV: Analysis of ordered categorical items with $>2$ categories
+
+For ordered items with $>2$ ordered response categories, the code is the same. Just make sure you declare the items as ordered in applying the `cfa()` function. Automatically, a threshold for the number of categories - 1 is estimated. Reverse coding is not even necessary (items that should be reverse coded just get a negative loading, but you have to make sure that all categories within an item are ordered in the same direction).
+
+With ordered-categorical items with $>2$ categoreis, you can also compare the fit of a model in which all loadings are restricted to equality (i.e., the PCM or partial credit model) with a model in which all loadings are freely estimated (i.e., the GRM or graded response model). In **`lavaan`**'s `cfa()` function, you would do this by pre-multiplying the indicators of the latent trait by the same label, as we did above in `model.rasch`.  
+
+If you want to fit the GRM and PCM using ML estimation, you can use function `grm()` from package **`ltm`**. To fit the GRM model, use function `grm()` with and specify `constrained = FALSE`. To fit the PCM, use function `gram()` and specify `constrained = TRUE`.
