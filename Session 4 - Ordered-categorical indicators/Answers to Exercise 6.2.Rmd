@@ -1,0 +1,67 @@
+---
+output: pdf_document
+title: Answers to exercises ordered categorical indicator variables
+---
+
+# Exercise 6.2
+
+```{r}
+gssdat <- read.table("gss2000.dat", header = TRUE)
+colMeans(gssdat)
+```
+
+Item `word.c` seems to be most difficult, `word.d` seems most easy.
+
+a) 
+
+```{r, message=FALSE, warning=FALSE}
+library("lavaan")
+gssmod.2PL <- '
+  vocab =~ word.a + word.b + word.c + word.d + word.e + word.f + word.g + 
+            word.h + word.i + word.j 
+'
+gssfit.2PL <- cfa(gssmod.2PL, ordered = paste0("word.", letters[1:10]), 
+                  data = gssdat)
+summary(gssfit.2PL, standardized = TRUE, fit.measures = TRUE)
+```
+
+
+b) The easiest item is `word.d`, most difficult is item `word.c`.
+
+c) The strongest indicator is `word.d`, the weakest indicator is `word.a`.
+
+d)
+
+```{r, warning=FALSE, message=FALSE}
+library("ltm")
+gssfit.2PL.IRT <- ltm(gssdat ~ z1)
+summary(gssfit.2PL.IRT)
+```
+
+Most difficult is now `word.a`, easiest is still `word.c`. Best indicator is now `word.d`, weakest indicator is now `word.a`.
+
+e) 
+
+```{r}
+gssmod.1PL <- '
+  vocab =~ lambda*word.a + lambda*word.b + lambda*word.c + lambda*word.d + 
+              lambda*word.e + lambda*word.f + lambda*word.g + lambda*word.h + 
+              lambda*word.i + lambda*word.j 
+'
+gssfit.1PL <- cfa(gssmod.1PL, ordered = paste0("word.", letters[1:10]),
+                  data = gssdat)
+fitinds <- c("chisq.scaled", "df", "pvalue.scaled", "cfi.scaled",
+             "rmsea.scaled", "srmr")
+fitMeasures(gssfit.1PL, fitinds)
+fitMeasures(gssfit.2PL, fitinds)
+lavTestLRT(gssfit.1PL, gssfit.2PL)
+```
+
+According to CFI, SRMR, RMSEA and the likelihood-ratio test, the 2PL should be preferred.
+
+```{r}
+gssfit.1PL.IRT <- rasch(gssdat)
+anova(gssfit.1PL.IRT, gssfit.2PL.IRT)
+``` 
+
+According to AIC, BIC and the likelihood-ratio test, the 2PL model should be preferred.

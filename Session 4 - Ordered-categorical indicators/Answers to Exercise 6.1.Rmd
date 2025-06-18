@@ -1,0 +1,47 @@
+---
+output: pdf_document
+title: Answers to exercises ordered categorical indicator variables
+---
+
+# Exercise 6.1
+
+Item wordings:
+
+1. The woman decides on her own that she does not wish to have a child.
+2. The couple agree that they do not wish to have a child.
+3. The woman is not married and does not wish to marry the man.
+4. The couple cannot afford any more children.
+
+```{r, message = FALSE, warning = FALSE}
+library("ltm")
+names(Abortion) <- c(paste0("I", 1:4))
+```
+
+a) Find the proportion who endorsed each item (i.e., the mean score).
+
+```{r}
+colMeans(Abortion)
+```
+
+Item `I3` is the most-endorsed (easiest) item, item `I1` is the least endorsed (most difficult) item. 
+
+b) Fit a CFA for binary responses using the CFA function, assuming a single latent variable underlies the item responses.
+
+```{r, warning = FALSE, message = FALSE}
+library("lavaan")
+model <- '
+  lib_ab_views =~ I1 + I2 + I3 + I4
+'
+fit.abo <- cfa(model, data = Abortion, ordered = paste0("I", 1:4))
+summary(fit.abo, standardized = TRUE, fit.measures = TRUE)
+```
+
+c) The robust $\chi^2$ value are significant, which is to be expected with a sample size of `r nrow(Abortion)`. The robust CFI indicates good model fit, as does the SRMR. The robust RMSEA indicates that the model does not fit well, and the $p$-value of the close fit test indicates that close fit should be rejected.
+
+Looking at the standardized loadings, all are significant and substantial. All loadings have similar values. The variance of the latent trait is significant.
+
+All in all, I would conclude that model fit seems acceptable.
+
+d) If you would have to create a 1-item abortion attitude test, I would use Item 3, because it has the highest discrimination parameter.
+
+e) If the 1-item test has to be used to find persons with extremely liberal views on abortion, I would select the item with the highest threshold (difficulty): Item 1. Persons agreeing with this statement have relatively the most liberal views on abortion.

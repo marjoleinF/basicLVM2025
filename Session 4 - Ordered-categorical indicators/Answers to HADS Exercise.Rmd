@@ -1,0 +1,113 @@
+---
+output: pdf_document
+title: Answers to exercises ordered categorical indicator variables
+---
+
+# Additional Exercise: HADS
+
+```{r, warning = FALSE, message = FALSE}
+library("foreign")
+HADS <- read.spss("HADS.sav", use.value.labels = TRUE, to.data.frame = TRUE)
+summary(HADS)
+```
+
+a) To fit a graded response model to the data:
+
+```{r, warning = FALSE, message = FALSE}
+library("lavaan")
+HADS.mod <- '
+  PAG =~ HADS1 + HADS4 + HADS6
+  ANX =~ HADS2 + HADS3 + HADS5 + HADS7
+'
+HADS.GRM.fit <- cfa(HADS.mod, data = HADS, ordered = paste("HADS", 1:7, sep=""))
+summary(HADS.GRM.fit, standardized = TRUE)
+```
+
+b) HADS4 seems to be the easiest item, because it has the lowest thresholds for all categories.
+
+c) With 'easiest', we mean that for this item, lower latent trait (anxiety) levels are needed to endorse a higher response category.
+
+d) Yes, all category thresholds are ordered similarly across items; they go from low to high.
+
+e) To fit a partial credit model to the data, we pre-multiple the indicators by the same label:
+
+```{r}
+HADS.PCM.mod <- '
+  PAG =~ l1*HADS1 + l1*HADS4 + l1*HADS6
+  ANX =~ l2*HADS2 + l2*HADS3 + l2*HADS5 + l2*HADS7
+'
+HADS.PCM.fit <- cfa(HADS.PCM.mod, data = HADS, ordered = paste("HADS", 1:7, sep=""))
+summary(HADS.PCM.fit, standardized = TRUE)
+```
+
+Note that again we see Item 4 is the easiest item, with the lowest thresholds.
+
+f) The standardized loadings in the GRM differ only somewhat between items, with the largest difference around .2. So we could prefer the PCM for that reason. But if we want to be able to distinguish between items that discriminate more or less well, we could prefer the GRM.
+
+Let's test the difference in fit and inspect model fit indiceS:
+
+```{r}
+fitinds <- c("chisq.scaled", "df", "pvalue.scaled", "cfi.scaled",
+             "rmsea.scaled", "srmr")
+fitMeasures(HADS.GRM.fit, fitinds)
+fitMeasures(HADS.PCM.fit, fitinds)
+lavTestLRT(HADS.PCM.fit, HADS.GRM.fit)
+```
+
+There is a significant difference in fit, so from a statistical point of view we should prefer the GRM, which is more complex. This is also indicated by the CFI values. However, if we use the RMSEA as the main criterion for model selection, we would prefer the PCM, because it is more parsimonious.
+
+g) 
+
+We convert the HADS items to numeric:
+
+```{r}
+HADS2 <- sapply(HADS[ , 4:10], as.numeric)
+```
+
+Then we fit a CFA to the numeric items. We can use the same model specification as for the GRM, and have to specify the type of estimator used:
+
+```{r}
+HADS.ML.fit <- cfa(HADS.mod, data = HADS2, meanstructure = TRUE, estimator = "MLR")
+parameterestimates(HADS.ML.fit, standardized = TRUE)[ , c(1:5, 7, 11)]
+```
+
+The standardized loadings indicate that item 1 is the best indicator, followed by item 3, 2 and then 7. So in that respect, treating the items as continuous or ordered does not really seem to make a difference.
+
+The item intercepts indicate that item 4 is the easiest item. Item intercepts are the expected value of the item score, when the LV has a value of 0. So, the higher the item intercept, the higher the item score given the same latent trait value.
+
+The standardized loadings are a bit lower in the model where we treat the indicators as continuous. The residual variance are higher in the model where we treat the indicators as continuous. This is in line with the very first observation we made in Example 6.2: Pearson correlations (assuming continuous variables) are lower than tetra- and polychoric correlations (which assume ordered categorical variables, which arise from an underlying continuous latent variable).
+
+```{r}
+fitinds2 <- c("chisq", "df", "pvalue", "cfi", "rmsea", "srmr")
+fitmeasures(HADS.ML.fit, fitinds2)
+fitMeasures(HADS.GRM.fit, fitinds)
+```
+
+The model fit does differ quite a bit between the models, which is to be expected. Because the DWLS and robust ML es
+
+In conclusion: Treating ordered-categorical items as continuous may not be accurate, but it will likely give you similar results as fitting an ordered-categorical item factor analysis.
+
+When ordered-categorical items can be treated as continuous has been rigourously studies by several authors (see references below). Rhemtulla et al. (2012) recommend treating item responses as continuous only when they have at least 5 ordered categories. 
+
+Dolan, C. V. (1994). Factor analysis of variables with 2, 3, 5 and 7 response categories: A comparison of categorical variable estimators using simulated data. *British Journal of Mathematical and Statistical Psychology, 47*(2), 309-326.
+
+DiStefano, C. (2002). The impact of categorization with confirmatory factor analysis. *Structural Equation Modeling, 9*(3), 327-346.
+
+Rhemtulla, M., Brosseau-Liard, P. E., & Savalei, V. (2012). When can categorical variables be treated as continuous? A comparison of robust continuous and categorical SEM estimation methods under suboptimal conditions. *Psychological Methods, 17*(3), 354.
+
+h) Now we use robust ML:
+
+```{r}
+HADS.MLR.fit <- cfa(HADS.mod, data = HADS2, estimator = "MLR", meanstructure = TRUE)
+parameterestimates(HADS.MLR.fit, standardized = TRUE)[ , c(1:5, 7, 11)]
+```
+
+We get identical parameter estimates as with standard ML.
+
+```{r}
+fitinds2 <- c("chisq.scaled", "df", "pvalue.scaled", "cfi.robust", 
+              "rmsea.robust", "srmr")
+fitmeasures(HADS.MLR.fit, fitinds2)
+```
+
+The robust fit indices indicate slightly better fit, but the difference with standard ML seems small.
