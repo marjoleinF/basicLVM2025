@@ -1,0 +1,196 @@
+---
+output: pdf_document
+title: Miscellaneous Problems
+---
+
+# Dealing with missing data 
+
+We will analyse the Holzinger Swineford data included in the **`lavaan`** package.
+
+```{r, warning=FALSE, message=FALSE}
+library("lavaan")
+summary(HolzingerSwineford1939)
+```
+
+We will fit a three-factor CFA model to the $x$ variables in the dataset:
+
+```{r}
+HS.model <- '
+  visual  =~ x1 + x2 + x3
+  textual =~ x4 + x5 + x6
+  speed   =~ x7 + x8 + x9
+'
+```
+
+
+#### Benchmark: Complete data
+
+```{r}
+CD_fit <- cfa(HS.model, data = HolzingerSwineford1939, meanstructure = TRUE)
+#summary(CD_fit, standardized = TRUE)
+fit.inds <- c("chisq", "df", "pvalue", "cfi", "rmsea", "srmr", "aic", "bic")
+fitmeasures(CD_fit, fit.inds)
+```
+
+#### Generate missingness
+
+We introduce some missing data. The values will be missing completely at random, with a probability of .2 for any value being missing:
+
+```{r}
+HSMiss <- HolzingerSwineford1939[,paste("x", 1:9, sep="")]
+set.seed(42)
+randomMiss <- rbinom(prod(dim(HSMiss)), 1, 0.20)
+randomMiss <- matrix(as.logical(randomMiss), nrow=nrow(HSMiss))
+HSMiss[randomMiss] <- NA
+head(HSMiss)
+```
+
+
+#### Listwise deletion approach
+
+```{r}
+LD_fit <- cfa(HS.model, data = HSMiss, meanstructure = TRUE)
+lavInspect(LD_fit, "cov.lv")
+#summary(LD_fit, standardized = TRUE)
+fitmeasures(LD_fit, fit.inds)
+```
+
+
+#### Multiple imputation approach
+
+We now impute the data using package **`mice`**. We use generate five imputed datasets and use the predictive mean matching method, which is (a.f.a.i.k.) the current state of the art in missing data imputation:
+
+```{r, warning=FALSE, message=FALSE}
+library("mice")
+m <- 5
+set.seed(42)
+imp_data <- mice(HSMiss, m = m, method = "pmm")
+```
+
+We extract the imputed datasets using function `complete()` and save them in a list:
+
+```{r}
+data_list <- list()
+for (i in 1:m) data_list[[i]] <- complete(imp_data, action = i)
+lapply(data_list, head)
+```
+
+We see that the missing values have been imputed with different values in every dataset.
+
+Now we use the `cfa.mi()` function to fit a CFA model on the imputed data:
+
+```{r, warning=FALSE, message=FALSE}
+library("semTools")
+```
+
+```{r}
+MI_fit <- cfa.mi(HS.model, data_list, meanstructure = TRUE)
+summ_MI_fit <- summary(MI_fit)
+```
+
+We see that fitting a SEM model on imputed data is quite straightforward: we use function `cfa.mi()` instead of `cfa()`. Using function `summary()`, we obtain the pooled result as a single model. The output is very similar to what were used to with a single dataset. The only difference is that with imputed data, we get $t$ instead of $z$ statistics for every parameter estimate: 
+
+```{r}
+summ_MI_fit
+tmp <- fitmeasures(MI_fit)
+round(tmp[fit.inds], digits = 3L)
+```
+
+
+#### Full information Maximum Likelihood (FIML)
+
+```{r}
+FIML_fit <- cfa(HS.model, data = HSMiss, missing = "ml")
+#summary(FIML_fit)
+fitmeasures(LD_fit, fit.inds)
+```
+
+
+## Comparison of methods
+
+We compare parameter estimates and standard errors between the complete dataset, listwise deletion, multiple imputation and FIML:
+
+```{r}
+comp_data <- 
+  cbind(parameterestimates(LD_fit, standardized = TRUE)[ , 1:3],
+        LD = round(parameterestimates(LD_fit, standardized = TRUE)[ , 4:5], 
+                   digits = 3L),
+        MI = round(data.frame(summ_MI_fit)[ , 5:6], digits = 3L),
+        FIML = round(parameterestimates(FIML_fit, standardized = TRUE)[ , 4:5], 
+                     digits = 3L),
+        CD = round(parameterestimates(CD_fit, standardized = TRUE)[ , 4:5],
+                   digits = 3L))
+comp_data <- comp_data[comp_data$LD.se > 0, ]
+comp_data
+```
+
+Those are a lot of numbers to compare, let's create some plots:
+
+```{r}
+par(mfrow = c(2, 2))
+plot(comp_data$LD.se, comp_data$CD.se, xlim = c(0, 0.8), ylim = c(0, 0.8), 
+     main = "standard errors LD vs CD",
+     xlab = "SEs listwise deletion",
+     ylab = "SEs complete data")
+abline(0, 1)
+plot(comp_data$MI.se, comp_data$CD.se, xlim = c(0, 0.5), ylim = c(0, 0.5), 
+     main = "standard errors MI vs CD",
+     ylab = "SEs complete data",
+     xlab = "SEs multiple imputation")
+abline(0, 1)
+plot(comp_data$FIML.se, comp_data$CD.se, xlim = c(0, 0.5), ylim = c(0, 0.5), 
+     main = "standard errors FIML vs CD",
+     ylab = "SEs complete data",
+     xlab = "SEs full information ML")
+abline(0, 1)
+```
+
+Listwise deletion yields much larger standard errors than we would obtain if we had the complete data. The standard errors obtained with multiply imputed data are much closer to those obtained with the complete data. The MI standard errors tend to be somewhat higher, but this is what should happen, as we did not use the full dataset with MI. The bottom-left plot indicates a similar pattern for (full information) ML: standard errors are only somewhat larger than when analysing complete data.
+
+```{r}
+par(mfrow = c(2, 2))
+plot(comp_data$LD.est, comp_data$CD.est, xlim = c(0, 6), ylim = c(0, 6), 
+     main = "Parameter estimates LD vs CD",
+     xlab = "Estimates listwise deletion",
+     ylab = "Estimates complete data")
+abline(0, 1)
+plot(comp_data$MI.est, comp_data$CD.est, xlim = c(0, 6), ylim = c(0, 6), 
+     main = "Parameter estimates MI vs CD",
+     ylab = "Estimates complete data",
+     xlab = "Estimates multiple imputation")
+abline(0, 1)
+plot(comp_data$FIML.est, comp_data$CD.est, xlim = c(0, 6), ylim = c(0, 6), 
+     main = "Parameter estimates FIML vs CD",
+     ylab = "Estimates complete data",
+     xlab = "Estimates full information ML")
+abline(0, 1)
+```
+
+The parameter estimates with listwise deletion vary much more from the parameter estimates than would have been obtained with the complete data. The parameter estimates with MI and FIML resemble those obtained with the complete data much more closer.
+
+
+\newpage
+
+# Parameters relating to exogenous variables
+
+In many SEM analyses, parameters relating to exogenous variables will often not be provided. Often, exogenous variables will be considered fixed. As a result, their (co)variances are fixed to their sample (co)variances, instead of being estimated as parameters in the model. For the model fit ($\chi^2$ and $df$), this does not make a difference. But sometimes you may want to inspect the variation or associations between the exogonous variables.
+
+```{r}
+HS_data <- HolzingerSwineford1939
+HS_data$age <- with(HS_data, ageyr + agemo/12)
+HS_data$sex <- HS_data$sex - 1 # to make it 0-1 coded
+HS.model2 <- '
+  visual  =~ x1 + x2 + x3
+  textual =~ x4 + x5 + x6
+  visual + textual ~ sex + age
+'
+HS_mod1 <- cfa(HS.model2, data = HS_data, estimator = "MLR")
+summary(HS_mod1, standardized = TRUE)
+```
+
+We see that the (co)variances of the exogenous variables (`sex` and `age`) are not estimated in the model. As a results, we cannot inspect their association. To include them in the model as model parameters, we have to additionally specify `fixed.x = FALSE` in the call to `cfa()`: 
+
+```{r}
+HS_mod2 <- cfa(HS.model2, data = HS_data, estimator = "MLR", fixed.x = FALSE)
+summary(HS_mod2, standardized = TRUE)
+```
